@@ -1,0 +1,9 @@
+[package]
+name = "antivirus"
+version = "0.1.0"
+authors = ["root"]
+
+[dependencies]
+md5 = "0.3.7"
+walkdir = "2"
+colored = "1.6"

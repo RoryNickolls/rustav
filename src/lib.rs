@@ -28,18 +28,20 @@ pub fn generate_signature(filename: &str) -> Signature {
 
 pub fn generate_signature_from_bytes(bytes: Vec<u8>) -> Signature {
     let len = bytes.len();
+    let start = bytes[0];
     let hash = format!("{:x}", md5::compute(bytes));
-    Signature { hash, len }
+    Signature { hash, len, start }
 }
 
 pub struct Signature {
     pub hash: String,
     pub len: usize,
+    pub start: u8,
 }
 
 impl Signature {
-    pub fn new(hash: String, len: usize) -> Signature {
-        Signature { hash, len }
+    pub fn new(hash: String, len: usize, start: u8) -> Signature {
+        Signature { hash, len, start }
     }
 
     pub fn to_string(&self) -> String {
@@ -47,6 +49,8 @@ impl Signature {
         format.push_str(&self.hash);
         format.push(':');
         format.push_str(&self.len.to_string());
+        format.push(':');
+        format.push_str(&self.start.to_string());
         format
     }
 }
@@ -72,7 +76,7 @@ impl VirusDatabase {
         for line in contents.lines() {
             let line_contents = line.to_string();
             let fields: Vec<&str> = line_contents.split(':').collect();
-            let sig = Signature::new(fields[0].to_string(), fields[1].parse().unwrap());
+            let sig = Signature::new(fields[0].to_string(), fields[1].parse().unwrap(), fields[2].parse().unwrap());
             signatures.push(sig);
         }
 
@@ -123,7 +127,7 @@ impl Scanner {
         for entry in WalkDir::new(root) {
             if let Ok(entry) = entry {
                 if entry.file_type().is_file() {
-                    Scanner::scan_file(self, entry.path().to_str().unwrap());
+                    Scanner::scan_file(self, entry.path().to_str().unwrap()).expect("Failed to scan file");
                 }
             }
         }
@@ -144,10 +148,11 @@ impl Scanner {
         let mut malicious = false;
 
         print!("Scanning {} with {} signatures", filename, &self.db.signatures.len());
-        ::std::io::stdout().flush();
+        ::std::io::stdout().flush().expect("Could not flush stdout");
         for signature in &self.db.signatures {
             let len = signature.len;
             let hash = &signature.hash;
+            let start = signature.start;
             if file_size > (len - 1) {
                 let last_byte = file_size - len + 1;
                 for i in 0..last_byte {
@@ -156,6 +161,11 @@ impl Scanner {
                         if let Err(e) = &scan_file.read(&mut scan_buf) {
                             panic!("Could not read bytes from file: {}");
                         }
+
+                        if scan_buf[0] != start {
+                            continue;
+                        }
+
                         let scanned_sig = generate_signature_from_bytes(scan_buf);
                         if &scanned_sig.hash == hash {
                             malicious = true;

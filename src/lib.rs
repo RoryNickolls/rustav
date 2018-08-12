@@ -3,6 +3,10 @@ extern crate walkdir;
 extern crate colored;
 
 use std::fs::File;
+use std::fs::Metadata;
+use std::fs::Permissions;
+
+use std::io;
 use std::io::Read;
 use std::io::Write;
 use std::fs::OpenOptions;
@@ -124,19 +128,47 @@ impl Scanner {
     }
 
     pub fn scan_system(&self, root: &str) {
+        let mut malicious_files: Vec<String> = vec![];
         for entry in WalkDir::new(root) {
             if let Ok(entry) = entry {
                 if entry.file_type().is_file() {
-                    Scanner::scan_file(self, entry.path().to_str().unwrap()).expect("Failed to scan file");
+                    let path = entry.path().to_str().unwrap().clone().to_string();
+                    match Scanner::scan_file(self, &path) {
+                        Ok(malicious) => {
+                            if malicious {
+                                malicious_files.push(path);
+                            }
+                            continue
+                        },
+                        Err(e) => println!("Could not open file {:?}", entry),
+                    };
                 }
             }
         }
+
+        println!("\n{} malicious files found.", malicious_files.len());
+        for file in &malicious_files {
+            println!("{}", file.red());
+        }
+        println!("Would you like to delete these files? y/n");
+        let mut input = String::new();
+        io::stdin().read_line(&mut input).expect("Could not read console input");
+        input.pop();
+        if input.to_lowercase() == "y" {
+            for file in &malicious_files {
+                std::fs::remove_file(file).expect("Could not remove file!");
+            }
+            println!("{} files removed.", malicious_files.len());
+        }
+        
     }
 
     pub fn scan_file(&self, filename: &str) -> Result<bool, &'static str> {
         let mut scan_file = match OpenOptions::new().read(true).open(&filename) {
             Ok(f) => f,
-            Err(e) => return Err("Could not open file for scanning: {:?}"),
+            Err(e) => {
+                return Err("Failed to scan file");
+            },
         };
 
         let mut buf: Vec<u8> = vec![];

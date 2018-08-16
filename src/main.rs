@@ -1,7 +1,14 @@
-extern crate antivirus;
+extern crate md5;
+extern crate walkdir;
+extern crate colored;
 
-use antivirus::VirusDatabase;
-use antivirus::Scanner;
+mod signature;
+mod scanner;
+mod virus_database;
+
+use virus_database::VirusDatabase;
+
+use scanner::Scanner;
 
 use std::io;
 use std::io::Write;
@@ -20,6 +27,7 @@ fn main() {
         let parameters: Vec<&str> = user_input.split_whitespace().collect();
         match parameters[0] {
             "filescan" => perform_filescan(parameters),
+            "add" => add_signature(parameters),
             "systemscan" => perform_systemscan(parameters),
             "help" => show_help(),
             "exit" => ::std::process::exit(0),
@@ -49,10 +57,21 @@ fn perform_systemscan(parameters: Vec<&str>) {
     scanner.scan_system(parameters[1]);
 }
 
+fn add_signature(parameters: Vec<&str>) {
+    if parameters.len() < 3 {
+        println!("Not enough arguments!");
+        ()
+    }
+    let mut db = VirusDatabase::new(parameters[2]);
+    let sig = signature::generate_signature(parameters[1]);
+    db.add_signature(sig).expect("Error adding signature");
+}
+
 fn show_help() {
     println!(
 "filescan <file> <database>
 systemscan <root> <database>
+add <file> <database>
 help
 exit");
 }

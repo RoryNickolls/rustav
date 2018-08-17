@@ -27,7 +27,8 @@ impl VirusDatabase {
         for line in contents.lines() {
             let line_contents = line.to_string();
             let fields: Vec<&str> = line_contents.split(':').collect();
-            let sig = Signature::new(fields[0].to_string(), fields[1].parse().unwrap(), fields[2].parse().unwrap());
+            let start_bytes: Vec<u8> = fields[2].as_bytes().to_vec();
+            let sig = Signature::new(fields[0].to_string(), fields[1].parse().unwrap(), start_bytes);
             signatures.push(sig);
         }
 
@@ -58,7 +59,7 @@ impl VirusDatabase {
         // Open specified file with read and append privileges, and create if does not exist
         let db_file = match OpenOptions::new().read(true).append(true).create(true).open(&filename) {
             Ok(file) => Ok(file),
-            Err(e) => Err("Could not open specified file"),
+            Err(_e) => Err("Could not open specified file"),
         };
         db_file
     }

@@ -1,8 +1,3 @@
-extern crate md5;
-extern crate walkdir;
-extern crate colored;
-
-
 #[cfg(test)]
 mod tests {
     use super::*;

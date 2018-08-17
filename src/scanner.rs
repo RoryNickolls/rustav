@@ -1,10 +1,8 @@
 use virus_database::VirusDatabase;
 
 use signature;
-use signature::Signature;
 
 use std::fs;
-use std::fs::File;
 use std::fs::OpenOptions;
 
 use std::io;
@@ -22,7 +20,6 @@ pub struct Scanner {
 }
 
 impl Scanner {
-
     pub fn new(db: VirusDatabase) -> Scanner {
         Scanner { db } 
     }
@@ -40,7 +37,7 @@ impl Scanner {
                             }
                             continue
                         },
-                        Err(e) => println!("Could not open file {:?}", entry),
+                        Err(e) => eprintln!("Could not open file {:?}:{:?}", entry, e),
                     };
                 }
             }
@@ -48,7 +45,7 @@ impl Scanner {
 
         println!("\n{} malicious files found.", malicious_files.len());
 
-        if(malicious_files.len() > 0) {
+        if malicious_files.len() > 0 {
             for file in &malicious_files {
                 println!("{}", file.red());
             }
@@ -69,35 +66,40 @@ impl Scanner {
     pub fn scan_file(&self, filename: &str) -> Result<bool, &'static str> {
         let mut scan_file = match OpenOptions::new().read(true).open(&filename) {
             Ok(f) => f,
-            Err(e) => {
-                return Err("Failed to scan file");
+            Err(_e) => {
+                return Err("Failed to open file");
             },
         };
 
         let mut buf: Vec<u8> = vec![];
-        if let Err(e) = &scan_file.read_to_end(&mut buf) {
-            panic!("Could not read data from file: {}", e);
+        if let Err(_e) = &scan_file.read_to_end(&mut buf) {
+            return Err("Could not read data from file");
         }
         let file_size = buf.len();
 
         let mut malicious = false;
 
-        print!("Scanning {} with {} signatures", filename, &self.db.signatures.len());
+        let mut max_filename_size = 50;
+        let mut slice_start = 0;
+        if filename.len() > max_filename_size {
+            slice_start = filename.len() - max_filename_size;
+        }
+        print!("{0: >50} -> ", filename[slice_start..filename.len()].blue());
         ::std::io::stdout().flush().expect("Could not flush stdout");
         for signature in &self.db.signatures {
             let len = signature.len;
             let hash = &signature.hash;
-            let start = signature.start;
+            let start = &signature.start;
             if file_size > (len - 1) {
                 let last_byte = file_size - len + 1;
-                for i in 0..last_byte {
-                    if let Ok(offset) = scan_file.seek(SeekFrom::Start(i as u64)) {
-                        let mut scan_buf = vec![0; len];
-                        if let Err(e) = &scan_file.read(&mut scan_buf) {
+                for i in (0..last_byte).step_by(start.len()) {
+                    if let Ok(_) = scan_file.seek(SeekFrom::Start(i as u64)) {
+                        let mut scan_buf: Vec<u8> = vec![0; len];
+                        if let Err(_e) = &scan_file.read(&mut scan_buf) {
                             panic!("Could not read bytes from file: {}");
                         }
 
-                        if scan_buf[0] != start {
+                        if scan_buf.iter().zip(start.iter()).filter(|(x, y)| x == y).count() == start.len() {
                             continue;
                         }
 
@@ -114,9 +116,9 @@ impl Scanner {
         }
 
         if !malicious {
-            print!(" --> {}\n", "CLEAR".green().bold());
+            print!(" {}\n", "CLEAR".green().bold());
         } else {
-            print!(" --> {}\n", "MALICIOUS".red().bold());
+            print!(" {}\n", "MALICIOUS".red().bold());
         }
 
         Ok(malicious)

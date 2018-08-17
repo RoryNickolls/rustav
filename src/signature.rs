@@ -19,7 +19,7 @@ pub fn generate_signature(filename: &str) -> Signature {
 
 pub fn generate_signature_from_bytes(bytes: Vec<u8>) -> Signature {
     let len = bytes.len();
-    let start = bytes[0];
+    let start = bytes[0..4].to_vec();
     let hash = format!("{:x}", md5::compute(bytes));
     Signature { hash, len, start }
 }
@@ -27,11 +27,11 @@ pub fn generate_signature_from_bytes(bytes: Vec<u8>) -> Signature {
 pub struct Signature {
     pub hash: String,
     pub len: usize,
-    pub start: u8,
+    pub start: Vec<u8>,
 }
 
 impl Signature {
-    pub fn new(hash: String, len: usize, start: u8) -> Signature {
+    pub fn new(hash: String, len: usize, start: Vec<u8>) -> Signature {
         Signature { hash, len, start }
     }
 
@@ -41,7 +41,13 @@ impl Signature {
         format.push(':');
         format.push_str(&self.len.to_string());
         format.push(':');
-        format.push_str(&self.start.to_string());
+
+        let mut start_bytes_str = String::new();
+        for byte in &self.start {
+            start_bytes_str.push_str(&byte.to_string());
+        }
+        start_bytes_str.pop();
+        format.push_str(&start_bytes_str);
         format
     }
 }

@@ -14,9 +14,8 @@ use std::io;
 use std::io::Write;
 
 fn main() {
-    println!("Rory's AV Program");
     loop {
-        println!("\nInput your command");
+        println!("Input your command");
         print!(">");
         io::stdout().flush().expect("Error flushing output stream");
 
@@ -44,7 +43,7 @@ fn perform_filescan(parameters: Vec<&str>) {
     //println!("Starting scan of {} using database {}", parameters[1], parameters[2]);
     let db = VirusDatabase::new(parameters[2]);
     let scanner = Scanner::new(db);
-    scanner.scan_file(parameters[1]);
+    scanner.scan_file(parameters[1]).expect("Could not scan file!");
 }
 
 fn perform_systemscan(parameters: Vec<&str>) {
@@ -68,10 +67,10 @@ fn add_signature(parameters: Vec<&str>) {
 }
 
 fn show_help() {
-    println!(
-"filescan <file> <database>
-systemscan <root> <database>
-add <file> <database>
-help
-exit");
+    println!("
+->filescan <file> <database>
+->systemscan <root> <database>
+->add <file> <database>
+->help
+->exit");
 }

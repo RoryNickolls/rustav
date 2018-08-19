@@ -1,6 +1,7 @@
 use virus_database::VirusDatabase;
 
 use signature;
+use signature::Signature;
 
 use std::fs;
 use std::fs::OpenOptions;
@@ -64,6 +65,8 @@ impl Scanner {
     }
 
     pub fn scan_file(&self, filename: &str) -> Result<bool, &'static str> {
+
+        // Open file with read permissions
         let mut scan_file = match OpenOptions::new().read(true).open(&filename) {
             Ok(f) => f,
             Err(_e) => {
@@ -71,20 +74,26 @@ impl Scanner {
             },
         };
 
+        // Read file into a buffer
         let mut buf: Vec<u8> = vec![];
         if let Err(_e) = &scan_file.read_to_end(&mut buf) {
             return Err("Could not read data from file");
         }
         let file_size = buf.len();
 
-        let mut malicious = false;
-
-        let mut max_filename_size = 50;
+        let mut malicious_sigs: Vec<&Signature> = vec![];
+        // Truncate filename to fit on screen
+        let max_filename_size = 50;
         let mut slice_start = 0;
+        let mut printed_filename = String::from("");
         if filename.len() > max_filename_size {
             slice_start = filename.len() - max_filename_size;
+            printed_filename.push_str(&String::from("..."));
         }
-        print!("{0: >50} -> ", filename[slice_start..filename.len()].blue());
+        printed_filename.push_str(&filename[slice_start..filename.len()]);
+        print!("{0: >50} -> ", printed_filename.blue());
+
+        // Start looping through signatures and checking file
         ::std::io::stdout().flush().expect("Could not flush stdout");
         for signature in &self.db.signatures {
             let len = signature.len;
@@ -99,14 +108,15 @@ impl Scanner {
                             panic!("Could not read bytes from file: {}");
                         }
 
-                        if scan_buf.iter().zip(start.iter()).filter(|(x, y)| x == y).count() == start.len() {
+                        // Use iterators to skip if start doesn't match
+                        let should_skip = !start_bytes_equal(&signature, &scan_buf);             
+                        if should_skip {
                             continue;
                         }
 
                         let scanned_sig = signature::generate_signature_from_bytes(scan_buf);
                         if &scanned_sig.hash == hash {
-                            malicious = true;
-                            break;
+                            malicious_sigs.push(&signature);
                         }                       
                     } else {
                         panic!("Could not read bytes from file!");
@@ -115,12 +125,34 @@ impl Scanner {
             }
         }
 
+        let malicious = malicious_sigs.len() != 0;
+
         if !malicious {
             print!(" {}\n", "CLEAR".green().bold());
         } else {
-            print!(" {}\n", "MALICIOUS".red().bold());
+            let mut descriptions = String::new();
+            for sig in malicious_sigs {
+                descriptions.push_str(&sig.description);
+                descriptions.push(',');
+            }
+            descriptions.pop();
+            print!(" {} ({})\n", "MALICIOUS".red().bold(), descriptions.red());
         }
 
         Ok(malicious)
     }
+}
+
+
+    
+fn start_bytes_equal(sig: &Signature, bytes: &Vec<u8>) -> bool {
+    let mut counter = 0;
+    let mut result = true;
+    for i in &sig.start {
+        result = result && i == &bytes[counter];
+        counter += 1;
+    }
+
+    //println!("{:?} {:?}", &sig.start, &bytes[0..sig.start.len()]);
+    result
 }

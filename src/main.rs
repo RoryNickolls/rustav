@@ -57,12 +57,13 @@ fn perform_systemscan(parameters: Vec<&str>) {
 }
 
 fn add_signature(parameters: Vec<&str>) {
-    if parameters.len() < 3 {
+    if parameters.len() < 4 {
         println!("Not enough arguments!");
         ()
     }
-    let mut db = VirusDatabase::new(parameters[2]);
-    let sig = signature::generate_signature(parameters[1]);
+    let mut db = VirusDatabase::new(parameters[3]);
+    let mut sig = signature::generate_signature(parameters[1]);
+    sig.set_description(parameters[2].to_string());
     db.add_signature(sig).expect("Error adding signature");
 }
 

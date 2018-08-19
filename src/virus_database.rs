@@ -25,10 +25,11 @@ impl VirusDatabase {
         file.read_to_string(&mut contents).expect("could not read file");
 
         for line in contents.lines() {
-            let line_contents = line.to_string();
+            let mut line_contents = line.to_string();
             let fields: Vec<&str> = line_contents.split(':').collect();
-            let start_bytes: Vec<u8> = fields[2].as_bytes().to_vec();
-            let sig = Signature::new(fields[0].to_string(), fields[1].parse().unwrap(), start_bytes);
+            let start_bytes: Vec<u8> = fields[2].split(',').map(|x| x.parse().unwrap()).collect();
+            let mut sig = Signature::new(fields[0].to_string(), fields[1].parse().unwrap(), start_bytes);
+            sig.set_description(fields[3].to_string());
             signatures.push(sig);
         }
 

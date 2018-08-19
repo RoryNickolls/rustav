@@ -1,9 +1,10 @@
 Old Method (Hash everything!! don't do this again):
-50MB File 1 Signature (Non-Malicious) = 13 minutes
-50MB File 1 Signature (Malicious) = 4 seconds
+50MB File 1 Signature = 13 minutes
 
 New Method (Search for first byte before hashing):
-50MB File 1 Signature (Non-Malicious) = 58 seconds
-50MB File 1 Signature (Malicious) =  2 seconds
+50MB File 1 Signature = 58 seconds
 
 New New Method (Search for first and second byte before hashing):
+50MB File 1 Signature = 15 seconds
+
+For a 50GB file, this method will take 4 hours per signature (way too long)

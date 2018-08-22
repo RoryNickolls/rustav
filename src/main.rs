@@ -1,6 +1,7 @@
 extern crate md5;
 extern crate walkdir;
 extern crate colored;
+extern crate boyer_moore;
 
 mod signature;
 mod scanner;
@@ -13,6 +14,8 @@ use scanner::Scanner;
 use std::io;
 use std::io::Write;
 
+use std::fs::metadata;
+
 fn main() {
     loop {
         println!("Input your command");
@@ -24,36 +27,31 @@ fn main() {
         user_input.pop();
 
         let parameters: Vec<&str> = user_input.split_whitespace().collect();
-        match parameters[0] {
-            "filescan" => perform_filescan(parameters),
-            "add" => add_signature(parameters),
-            "systemscan" => perform_systemscan(parameters),
-            "help" => show_help(),
-            "exit" => ::std::process::exit(0),
-            _ => println!("Command not recognised."),
+        if parameters.len() > 0 {
+            match parameters[0] {
+                "add" => add_signature(parameters),
+                "scan" => perform_scan(parameters),
+                "help" => show_help(),
+                "exit" => ::std::process::exit(0),
+                _ => println!("Command not recognised."),
+            }
         }
     }
 }
 
-fn perform_filescan(parameters: Vec<&str>) {
+fn perform_scan(parameters: Vec<&str>) {
     if parameters.len() < 3 {
-        println!("Not enough arguments!");
+        println!("Not enough arguments");
         ()
     }
-    //println!("Starting scan of {} using database {}", parameters[1], parameters[2]);
-    let db = VirusDatabase::new(parameters[2]);
+    let metadata = metadata(parameters[1]).unwrap();
+    let db = VirusDatabase::new(parameters[2]).expect("Could not open database file");
     let scanner = Scanner::new(db);
-    scanner.scan_file(parameters[1]).expect("Could not scan file!");
-}
-
-fn perform_systemscan(parameters: Vec<&str>) {
-    if parameters.len() < 3 {
-        println!("Not enough arguments!");
-        ()
+    if metadata.is_file() {
+        scanner.scan_file(parameters[1]).expect("Failed to scan file");
+    } else if metadata.is_dir() {
+        scanner.scan_system(parameters[1]);
     }
-    let db = VirusDatabase::new(parameters[2]);
-    let scanner = Scanner::new(db);
-    scanner.scan_system(parameters[1]);
 }
 
 fn add_signature(parameters: Vec<&str>) {
@@ -61,16 +59,14 @@ fn add_signature(parameters: Vec<&str>) {
         println!("Not enough arguments!");
         ()
     }
-    let mut db = VirusDatabase::new(parameters[3]);
+    let mut db = VirusDatabase::new(parameters[3]).expect("Could not open database file");
     let mut sig = signature::generate_signature(parameters[1]);
     sig.set_description(parameters[2].to_string());
     db.add_signature(sig).expect("Error adding signature");
 }
 
 fn show_help() {
-    println!("
-->filescan <file> <database>
-->systemscan <root> <database>
+    println!("->scan <dir/file> <database>
 ->add <file> <database>
 ->help
 ->exit");

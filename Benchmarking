@@ -1,4 +1,4 @@
-Old Method (Hash everything!! don't do this again):
+Old Method (Hash everything!! NEVER do this again):
 50MB File 1 Signature = 13 minutes
 
 New Method (Search for first byte before hashing):
@@ -7,4 +7,7 @@ New Method (Search for first byte before hashing):
 New New Method (Search for first and second byte before hashing):
 50MB File 1 Signature = 15 seconds
 
-For a 50GB file, this method will take 4 hours per signature (way too long)
+New New New Method (Implemented modified Boyer-Moore search):
+50MB File 1 Signature = 4 seconds
+
+New New New New Method (Test all signatures in one pass):

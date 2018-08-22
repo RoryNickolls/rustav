@@ -2,10 +2,15 @@
 name = "antivirus"
 version = "0.1.0"
 dependencies = [
+ "boyer_moore 0.1.0",
  "colored 1.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "md5 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "walkdir 2.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "boyer_moore"
+version = "0.1.0"
 
 [[package]]
 name = "colored"

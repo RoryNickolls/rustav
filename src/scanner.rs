@@ -3,14 +3,14 @@ use virus_database::VirusDatabase;
 use signature;
 use signature::Signature;
 
+use boyer_moore;
+
 use std::fs;
 use std::fs::OpenOptions;
 
 use std::io;
 use std::io::Write;
 use std::io::Read;
-use std::io::Seek;
-use std::io::SeekFrom;
 
 use walkdir::WalkDir;
 
@@ -31,14 +31,11 @@ impl Scanner {
             if let Ok(entry) = entry {
                 if entry.file_type().is_file() {
                     let path = entry.path().to_str().unwrap().clone().to_string();
-                    match Scanner::scan_file(self, &path) {
-                        Ok(malicious) => {
-                            if malicious {
-                                malicious_files.push(path);
-                            }
-                            continue
-                        },
-                        Err(e) => eprintln!("Could not open file {:?}:{:?}", entry, e),
+                    if let Ok(malicious) = Scanner::scan_file(self, &path) {
+                        if malicious {
+                            malicious_files.push(path);
+                        }
+                        continue
                     };
                 }
             }
@@ -81,17 +78,22 @@ impl Scanner {
         }
         let file_size = buf.len();
 
+        // Keep track of which signatures are in the file
         let mut malicious_sigs: Vec<&Signature> = vec![];
+
         // Truncate filename to fit on screen
         let max_filename_size = 50;
         let mut slice_start = 0;
+        //let mut printed_filename = String::from("");
+        //if filename.len() > max_filename_size {
+        //    slice_start = filename.len() - max_filename_size;
+        //    printed_filename.push_str(&String::from("..."));
+        //}
+        //printed_filename.push_str(&filename[slice_start..filename.len()]);
         let mut printed_filename = String::from("");
-        if filename.len() > max_filename_size {
-            slice_start = filename.len() - max_filename_size;
-            printed_filename.push_str(&String::from("..."));
-        }
-        printed_filename.push_str(&filename[slice_start..filename.len()]);
-        print!("{0: >50} -> ", printed_filename.blue());
+        printed_filename.push_str(&filename);
+        printed_filename.truncate(50);
+        print!("{0: >50} ->", printed_filename.bright_blue());
 
         // Start looping through signatures and checking file
         ::std::io::stdout().flush().expect("Could not flush stdout");
@@ -99,36 +101,22 @@ impl Scanner {
             let len = signature.len;
             let hash = &signature.hash;
             let start = &signature.start;
-            if file_size > (len - 1) {
-                let last_byte = file_size - len + 1;
-                for i in (0..last_byte).step_by(start.len()) {
-                    if let Ok(_) = scan_file.seek(SeekFrom::Start(i as u64)) {
-                        let mut scan_buf: Vec<u8> = vec![0; len];
-                        if let Err(_e) = &scan_file.read(&mut scan_buf) {
-                            panic!("Could not read bytes from file: {}");
-                        }
-
-                        // Use iterators to skip if start doesn't match
-                        let should_skip = !start_bytes_equal(&signature, &scan_buf);             
-                        if should_skip {
-                            continue;
-                        }
-
-                        let scanned_sig = signature::generate_signature_from_bytes(scan_buf);
-                        if &scanned_sig.hash == hash {
+            if file_size > len - 1 {
+                let result = boyer_moore::search_single(&buf, start);
+                if result.len() > 0 {
+                    for start in result {
+                        let scan_sig = signature::generate_signature_from_bytes(buf[start..start+len].to_vec());
+                        if &scan_sig.hash == hash {
                             malicious_sigs.push(&signature);
-                        }                       
-                    } else {
-                        panic!("Could not read bytes from file!");
+                        }
                     }
                 }
             }
         }
 
         let malicious = malicious_sigs.len() != 0;
-
         if !malicious {
-            print!(" {}\n", "CLEAR".green().bold());
+            print!(" {0: <10}\n", "CLEAR".green().bold());
         } else {
             let mut descriptions = String::new();
             for sig in malicious_sigs {
@@ -141,18 +129,4 @@ impl Scanner {
 
         Ok(malicious)
     }
-}
-
-
-    
-fn start_bytes_equal(sig: &Signature, bytes: &Vec<u8>) -> bool {
-    let mut counter = 0;
-    let mut result = true;
-    for i in &sig.start {
-        result = result && i == &bytes[counter];
-        counter += 1;
-    }
-
-    //println!("{:?} {:?}", &sig.start, &bytes[0..sig.start.len()]);
-    result
 }

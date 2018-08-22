@@ -1,0 +1,6 @@
+[package]
+name = "boyer_moore"
+version = "0.1.0"
+authors = ["rory"]
+
+[dependencies]

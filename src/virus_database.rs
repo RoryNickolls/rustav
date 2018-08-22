@@ -12,11 +12,11 @@ pub struct VirusDatabase {
 }
 
 impl VirusDatabase {
-    pub fn new(filename: &str) -> VirusDatabase {
+    pub fn new(filename: &str) -> Result<VirusDatabase, String> {
 
         let mut file = match VirusDatabase::open_file(&filename) {
             Ok(f) => f,   
-            Err(e) => panic!("{}", e),
+            Err(_e) => return Err(format!("Could not open virus database file {}", filename)),
         };
 
         let mut signatures: Vec<Signature> = vec![];
@@ -33,7 +33,7 @@ impl VirusDatabase {
             signatures.push(sig);
         }
 
-        VirusDatabase { file, signatures }
+        Ok(VirusDatabase { file, signatures })
     }
 
     pub fn add_signature(&mut self, signature: Signature) -> Result<(), &'static str> {

@@ -11,3 +11,4 @@ New New New Method (Implemented modified Boyer-Moore search):
 50MB File 1 Signature = 4 seconds
 
 New New New New Method (Test all signatures in one pass):
+50MB File 1 Signature = < 1 second

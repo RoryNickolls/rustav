@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 /// Given a data buffer and a pattern, this method will return a Vec
 /// which contains the start index of each pattern match it finds
 pub fn search_single(data: &[u8], pattern: &[u8]) -> Vec<usize> {
@@ -10,10 +12,16 @@ pub fn search_single(data: &[u8], pattern: &[u8]) -> Vec<usize> {
         return matches;
     }
 
+    let mut occurrences = HashMap::new();
+    for i in pattern.len()..0 {
+        occurrences.insert(pattern[i - 1], i - 1);
+    }
+
     // Apply Boyer-Moore until end of data reached
-    let mut k = pattern.len()-1;
-    while k < data.len() {
-        let (matched, jump) = get_shift(data, pattern, k);
+    let mut k = pattern.len() - 1;
+    let end = data.len() - pattern.len();
+    while k < end {
+        let (matched, jump) = get_shift(data, pattern, k, &occurrences);
         if matched {
             let start = k - (pattern.len() - 1);
             matches.push(start);
@@ -23,55 +31,23 @@ pub fn search_single(data: &[u8], pattern: &[u8]) -> Vec<usize> {
     matches
 }
 
-fn get_shift(data: &[u8], pattern: &[u8], k: usize) -> (bool, usize) {
-    // Check if end of pattern is equal to data at position k
-    if data[k] == pattern[pattern.len()-1] {
-        match compare(data, pattern, k) {
-            CompareResult::Match => {
-                // Bytes equal, add the start as a match!
-                return (true, pattern.len());
-            },
-            CompareResult::Mismatch(mismatch, last) => {
-                return (false, mismatch - last);
-            },
-        }
-    } else {
-        // If no match then find last occurrence in pattern
-        for i in 0..pattern.len() {
-            if pattern[i] == data[k] {
-                // Found last occurrence!
-                return (false, pattern.len() - i - 1);
+fn get_shift(data: &[u8], pattern: &[u8], k: usize, occurrences: &HashMap<u8, usize>) -> (bool, usize) {
+    let mut i = pattern.len() - 1;
+    let mut j = k;
+    while i > 0 {
+        if pattern[i] != data[j] {
+            // Here we have found a mismatch at position j in data, position pattern.len()-i in pattern
+            if occurrences.contains_key(&data[j]) {
+                println!("CONTAINED");
+                return (false, *occurrences.get(&data[j]).unwrap());
             }
+            return (false, *occurrences.get(&data[k]).unwrap_or(&pattern.len()));
         }
-
-        // No subsequent match was found, shift whole pattern
-        return (false, pattern.len());
+        i = i - 1;
+        j = j - 1;
     }
-}
-
-enum CompareResult {
-    Match,
-    Mismatch(usize, usize), // mismatch position, last occurrence
-}
-
-fn compare(data: &[u8], pattern: &[u8], k: usize) -> CompareResult {
-    for i in 0..pattern.len()  {
-        let data_byte = data[k - i];
-        let pattern_byte = pattern[pattern.len() - 1 - i];
-
-        // Here we have a mismatch
-        if data_byte != pattern_byte {
-            // Try to find first position j with a matching byte
-            for j in 0..pattern.len()-i {
-                // Byte matches
-                if pattern[j] == data_byte {
-                    return CompareResult::Mismatch(pattern.len()-1-i, j);
-                }
-            }
-            return CompareResult::Mismatch(i, 0);
-        }
-    }
-    CompareResult::Match
+    // No mismatch, pattern must be equal
+    return (true, pattern.len());
 }
 
 #[cfg(test)]

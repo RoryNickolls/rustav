@@ -82,17 +82,14 @@ impl Scanner {
         let mut malicious_sigs: Vec<&Signature> = vec![];
 
         // Truncate filename to fit on screen
-        let max_filename_size = 50;
+        let max_filename_size = 47;
         let mut slice_start = 0;
-        //let mut printed_filename = String::from("");
-        //if filename.len() > max_filename_size {
-        //    slice_start = filename.len() - max_filename_size;
-        //    printed_filename.push_str(&String::from("..."));
-        //}
-        //printed_filename.push_str(&filename[slice_start..filename.len()]);
         let mut printed_filename = String::from("");
-        printed_filename.push_str(&filename);
-        printed_filename.truncate(50);
+        if filename.len() > max_filename_size {
+            slice_start = filename.len() - max_filename_size;
+            printed_filename.push_str(&String::from("..."));
+        }
+        printed_filename.push_str(&filename[slice_start..filename.len()]);
         print!("{0: >50} ->", printed_filename.bright_blue());
 
         // Start looping through signatures and checking file
@@ -105,9 +102,11 @@ impl Scanner {
                 let result = boyer_moore::search_single(&buf, start);
                 if result.len() > 0 {
                     for start in result {
-                        let scan_sig = signature::generate_signature_from_bytes(buf[start..start+len].to_vec());
-                        if &scan_sig.hash == hash {
-                            malicious_sigs.push(&signature);
+                        if start < file_size - len {
+                            let scan_sig = signature::generate_signature_from_bytes(buf[start..start+len].to_vec());
+                            if &scan_sig.hash == hash {
+                                malicious_sigs.push(&signature);
+                            }
                         }
                     }
                 }
